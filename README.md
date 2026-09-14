@@ -102,7 +102,7 @@ docker run -d --name dante --init -p 1080:1080 \
 
 `.github/workflows/docker.yml` runs on every pushed tag. It builds linux/amd64 and linux/arm64 and pushes both Docker Hub and GHCR. A tag `1.4.4` or `v1.4.4` produces the image tags `1.4.4` and `latest` (pre-release tags such as `1.4.5-rc1` don't move `latest`).
 
-One-time setup, in the GitHub repo under Settings → Secrets and variables → Actions:
+One-time setup: in the GitHub repo under Settings → Environments, create an environment named `Docker Hub` and add these secrets to it (the job runs in that environment):
 
 | Secret               | Value                                                  |
 | -------------------- | ------------------------------------------------------ |
