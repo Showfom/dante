@@ -1,18 +1,24 @@
 # Dante SOCKS5 Proxy (Docker)
 
-Images for linux/amd64 and linux/arm64, tags `1.4.4` and `latest`:
-
-| Registry   | Image                                                              |
-| ---------- | ------------------------------------------------------------------ |
-| Docker Hub | [`showfom/dante`](https://hub.docker.com/r/showfom/dante)          |
-| GHCR       | [`ghcr.io/showfom/dante`](https://github.com/Showfom/dante/pkgs/container/dante) |
-
 A Docker image for the [Dante](https://www.inet.no/dante/) SOCKS5 server, built from source on `debian:trixie-slim`.
+
+## Background
+
+Debian Trixie doesn't ship a `dante-server` package, so there is no `apt install` route on current Debian. This repo builds Dante from the upstream source tarball and packages it as a Docker image instead.
 
 - Multi-stage build: compilers stay in the build stage, the runtime image only has `sockd` and `libpam0g`
 - The Dante version is a build argument, and the source tarball is checked against a SHA-256 checksum
 - Username/password auth by default; the login is created from environment variables when the container starts
 - An IP whitelist config is included for setups without a password
+
+## Images
+
+Built for linux/amd64 and linux/arm64 and published to both registries:
+
+| Registry   | Image                                                                             |
+| ---------- | --------------------------------------------------------------------------------- |
+| Docker Hub | [`showfom/dante:latest`](https://hub.docker.com/r/showfom/dante)                 |
+| GHCR       | [`ghcr.io/showfom/dante:latest`](https://github.com/Showfom/dante/pkgs/container/dante) |
 
 ## Quick start
 
@@ -26,13 +32,13 @@ docker compose up -d
 To pull from GHCR instead of Docker Hub, change the image in `compose.yaml`:
 
 ```yaml
-image: ghcr.io/showfom/dante:1.4.4
+image: ghcr.io/showfom/dante:latest
 ```
 
 Test it:
 
 ```bash
-curl -x socks5h://proxy_user:change-me@YOUR_SERVER_IP:1080 https://ifconfig.me
+curl -x socks5h://proxy_user:change-me@YOUR_SERVER_IP:1080 https://ip.sb
 ```
 
 ## Files
@@ -42,7 +48,7 @@ curl -x socks5h://proxy_user:change-me@YOUR_SERVER_IP:1080 https://ifconfig.me
 | `Dockerfile`           | Multi-stage build that compiles and packages `sockd`           |
 | `docker-entrypoint.sh` | Creates or updates the proxy user from env vars at startup     |
 | `.github/workflows/docker.yml` | Builds and pushes multi-arch images when a tag is pushed |
-| `compose.yaml`         | Docker Compose setup using `showfom/dante:1.4.4`               |
+| `compose.yaml`         | Docker Compose setup using `showfom/dante:latest`              |
 | `sockd.conf`           | Default config (username/password), mounted read-only          |
 | `sockd-whitelist.conf` | Alternative config: IP whitelist, no authentication            |
 | `sockd.conf.example`   | Upstream sample config (from the Debian package), fully commented |
@@ -72,22 +78,22 @@ Users added this way are lost when the container is recreated. To keep them, ext
 
 Defined at the top of the `Dockerfile`:
 
-| Argument         | Default          | Description                          |
-| ---------------- | ---------------- | ------------------------------------ |
-| `DANTE_VERSION`  | `1.4.4`          | Dante release to build               |
-| `DANTE_SHA256`   | `1973c773…3faec` | SHA-256 of `dante-<version>.tar.gz`  |
-| `DEBIAN_VERSION` | `trixie-slim`    | Debian base image tag                |
+| Argument         | Default                  | Description                          |
+| ---------------- | ------------------------ | ------------------------------------ |
+| `DANTE_VERSION`  | current Dante release    | Dante release to build               |
+| `DANTE_SHA256`   | checksum of that release | SHA-256 of `dante-<version>.tar.gz`  |
+| `DEBIAN_VERSION` | `trixie-slim`            | Debian base image tag                |
 
 To upgrade Dante, get the new tarball's checksum:
 
 ```bash
-curl -fsSL https://www.inet.no/dante/files/dante-1.4.x.tar.gz | sha256sum
+curl -fsSL https://www.inet.no/dante/files/dante-<version>.tar.gz | sha256sum
 ```
 
 Update `DANTE_VERSION` and `DANTE_SHA256` in the `Dockerfile` and build it yourself. The build fails if the checksum doesn't match:
 
 ```bash
-docker build -t showfom/dante:1.4.4 .
+docker build -t showfom/dante:latest .
 ```
 
 Without Compose:
@@ -95,12 +101,12 @@ Without Compose:
 ```bash
 docker run -d --name dante --init -p 1080:1080 \
   -e PROXY_USER=proxy_user -e PROXY_PASSWORD=change-me \
-  showfom/dante:1.4.4
+  showfom/dante:latest
 ```
 
 ### Releasing images
 
-`.github/workflows/docker.yml` runs on every pushed tag. It builds linux/amd64 and linux/arm64 and pushes both Docker Hub and GHCR. A tag `1.4.4` or `v1.4.4` produces the image tags `1.4.4` and `latest` (pre-release tags such as `1.4.5-rc1` don't move `latest`).
+`.github/workflows/docker.yml` runs on every pushed tag. It builds linux/amd64 and linux/arm64 and pushes both Docker Hub and GHCR. A tag like `<version>` or `v<version>` produces the image tags `<version>` and `latest`; pre-release tags such as `<version>-rc1` don't move `latest`.
 
 One-time setup: in the GitHub repo under Settings → Environments, create an environment named `Docker Hub` and add these secrets to it (the job runs in that environment):
 
@@ -114,8 +120,8 @@ GHCR uses the built-in `GITHUB_TOKEN`, so it needs no secret. After the first pu
 To release, bump the version in the `Dockerfile` if needed, then:
 
 ```bash
-git tag 1.4.4
-git push origin 1.4.4
+git tag -m "Dante <version>" <version>
+git push origin <version>
 ```
 
 ### sockd.conf

@@ -2,7 +2,7 @@ name: dante
 
 services:
   dante:
-    image: showfom/dante:1.4.4
+    image: showfom/dante:latest
     container_name: dante
     init: true
     ports:
