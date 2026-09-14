@@ -44,7 +44,7 @@ ARG DANTE_VERSION
 LABEL org.opencontainers.image.title="dante" \
       org.opencontainers.image.description="Dante SOCKS5 proxy server" \
       org.opencontainers.image.version="${DANTE_VERSION}" \
-      org.opencontainers.image.source="https://github.com/Showfom/dante"
+      org.opencontainers.image.source="https://github.com/showfom/dante"
 
 RUN set -eux; \
     apt-get update; \

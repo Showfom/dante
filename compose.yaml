@@ -2,10 +2,7 @@ name: dante
 
 services:
   dante:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: dante
+    image: showfom/dante:1.4.4
     container_name: dante
     init: true
     ports:
