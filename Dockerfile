@@ -1,12 +1,14 @@
 # syntax=docker/dockerfile:1
 
 ARG DEBIAN_VERSION=trixie-slim
+ARG DANTE_VERSION=1.4.4
+ARG DANTE_SHA256=1973c7732f1f9f0a4c0ccf2c1ce462c7c25060b25643ea90f9b98f53a813faec
 
 # ---------- build stage ----------
 FROM debian:${DEBIAN_VERSION} AS build
 
-ARG DANTE_VERSION=1.4.4
-ARG DANTE_SHA256=1973c7732f1f9f0a4c0ccf2c1ce462c7c25060b25643ea90f9b98f53a813faec
+ARG DANTE_VERSION
+ARG DANTE_SHA256
 
 RUN set -eux; \
     apt-get update; \
@@ -38,7 +40,7 @@ RUN set -eux; \
 # ---------- runtime stage ----------
 FROM debian:${DEBIAN_VERSION}
 
-ARG DANTE_VERSION=1.4.4
+ARG DANTE_VERSION
 LABEL org.opencontainers.image.title="dante" \
       org.opencontainers.image.description="Dante SOCKS5 proxy server" \
       org.opencontainers.image.version="${DANTE_VERSION}" \

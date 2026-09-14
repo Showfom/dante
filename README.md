@@ -1,79 +1,79 @@
 # Dante SOCKS5 Proxy (Docker)
 
-基于 `debian:trixie-slim` 从源码编译 [Dante](https://www.inet.no/dante/) SOCKS5 服务端的 Docker 镜像。
+A Docker image for the [Dante](https://www.inet.no/dante/) SOCKS5 server, built from source on `debian:trixie-slim`.
 
-- 多阶段构建：编译工具只在构建阶段使用，运行镜像里只有 `sockd` 和 `libpam0g`
-- Dante 版本通过构建参数指定，源码包下载后会校验 SHA-256
-- 默认启用用户名/密码认证，容器启动时根据环境变量创建登录用户
+- Multi-stage build: compilers stay in the build stage, the runtime image only has `sockd` and `libpam0g`
+- The Dante version is a build argument, and the source tarball is checked against a SHA-256 checksum
+- Username/password auth by default; the login is created from environment variables when the container starts
 
-## 快速开始
+## Quick start
 
 ```bash
 git clone git@github.com:Showfom/dante.git
 cd dante
-cp .env.example .env    # 修改 PROXY_USER 和 PROXY_PASSWORD
+# edit PROXY_USER and PROXY_PASSWORD in compose.yaml first
 docker compose up -d --build
 ```
 
-测试：
+Test it:
 
 ```bash
-curl -x socks5h://proxy_user:change-me@你的服务器IP:1080 https://ifconfig.me
+curl -x socks5h://proxy_user:change-me@YOUR_SERVER_IP:1080 https://ifconfig.me
 ```
 
-## 文件说明
+## Files
 
-| 文件                   | 说明                                              |
-| ---------------------- | ------------------------------------------------- |
-| `Dockerfile`           | 多阶段构建，编译并打包 `sockd`                    |
-| `docker-entrypoint.sh` | 启动时根据环境变量创建或更新代理用户              |
-| `compose.yaml`         | Docker Compose 配置                               |
-| `sockd.conf`           | 实际使用的配置，Compose 以只读方式挂载进容器      |
-| `sockd.conf.example`   | Dante 官方示例配置（来自 Debian 包），带完整注释  |
-| `.env.example`         | 环境变量模板                                      |
+| File                   | Purpose                                                        |
+| ---------------------- | -------------------------------------------------------------- |
+| `Dockerfile`           | Multi-stage build that compiles and packages `sockd`           |
+| `docker-entrypoint.sh` | Creates or updates the proxy user from env vars at startup     |
+| `compose.yaml`         | Docker Compose setup                                           |
+| `sockd.conf`           | The config in use, mounted read-only into the container        |
+| `sockd.conf.example`   | Upstream sample config (from the Debian package), fully commented |
 
-## 配置
+## Configuration
 
-### 环境变量
+### Environment variables
 
-| 变量             | 说明                                         |
-| ---------------- | -------------------------------------------- |
-| `PROXY_USER`     | 代理用户名，容器启动时自动创建               |
-| `PROXY_PASSWORD` | `PROXY_USER` 的密码，每次启动都会重新设置    |
+Set these under `environment` in `compose.yaml`:
 
-两个变量有一个为空就不会创建用户。默认配置是 `socksmethod: username`，此时没人能用这个代理。
+| Variable         | Description                                                  |
+| ---------------- | ------------------------------------------------------------ |
+| `PROXY_USER`     | Proxy login name. Created inside the container at startup.   |
+| `PROXY_PASSWORD` | Password for `PROXY_USER`. Reset on every container start.   |
 
-需要多个用户时，可以在运行中的容器里手动添加：
+If either one is empty, no user is created. With the default `socksmethod: username`, nobody can then use the proxy.
+
+For more than one user, add them in the running container:
 
 ```bash
 docker exec -it dante sh -c 'useradd -M -s /usr/sbin/nologin bob && passwd bob'
 ```
 
-这样加的用户在容器重建后会丢失。要长期保留，请修改 `docker-entrypoint.sh`。
+Users added this way are lost when the container is recreated. To keep them, extend `docker-entrypoint.sh`.
 
-### 构建参数
+### Build arguments
 
-| 参数             | 默认值             | 说明                                  |
-| ---------------- | ------------------ | ------------------------------------- |
-| `DANTE_VERSION`  | `1.4.4`            | 要编译的 Dante 版本                   |
-| `DANTE_SHA256`   | 1.4.4 源码包的校验值 | `dante-<版本>.tar.gz` 的 SHA-256     |
-| `DEBIAN_VERSION` | `trixie-slim`      | Debian 基础镜像标签                   |
+Defined at the top of the `Dockerfile`:
 
-升级 Dante 时先算出新源码包的校验值：
+| Argument         | Default          | Description                          |
+| ---------------- | ---------------- | ------------------------------------ |
+| `DANTE_VERSION`  | `1.4.4`          | Dante release to build               |
+| `DANTE_SHA256`   | `1973c773…3faec` | SHA-256 of `dante-<version>.tar.gz`  |
+| `DEBIAN_VERSION` | `trixie-slim`    | Debian base image tag                |
+
+To upgrade Dante, get the new tarball's checksum:
 
 ```bash
 curl -fsSL https://www.inet.no/dante/files/dante-1.4.x.tar.gz | sha256sum
 ```
 
-把 `DANTE_VERSION` 和 `DANTE_SHA256` 写进 `.env`，再执行 `docker compose build`。校验值对不上会直接构建失败。
+Update `DANTE_VERSION` and `DANTE_SHA256` in the `Dockerfile`, then run `docker compose build`. The build fails if the checksum doesn't match.
 
-不用 Compose 的话：
+Without Compose:
 
 ```bash
-docker build \
-  --build-arg DANTE_VERSION=1.4.4 \
-  --build-arg DANTE_SHA256=1973c7732f1f9f0a4c0ccf2c1ce462c7c25060b25643ea90f9b98f53a813faec \
-  -t dante:1.4.4 .
+docker build -t dante:1.4.4 .
 
 docker run -d --name dante --init -p 1080:1080 \
   -e PROXY_USER=proxy_user -e PROXY_PASSWORD=change-me \
@@ -82,20 +82,20 @@ docker run -d --name dante --init -p 1080:1080 \
 
 ### sockd.conf
 
-Compose 把 `sockd.conf` 只读挂载到 `/etc/sockd.conf`，改完配置重启即可，不用重新构建：
+Compose mounts `sockd.conf` read-only at `/etc/sockd.conf`, so config changes only need a restart, not a rebuild:
 
 ```bash
 docker compose restart
 ```
 
-默认配置：
+The default config:
 
-- 监听 `0.0.0.0:1080`，出口走 `eth0`
-- 必须用户名/密码认证（`socksmethod: username`）
-- 禁止访问容器自身的回环地址（`127.0.0.0/8`）
-- 允许 TCP `connect` 和 UDP `udpassociate`
+- listens on `0.0.0.0:1080` and sends traffic out through `eth0`
+- requires username/password (`socksmethod: username`)
+- blocks connections to the container's own loopback (`127.0.0.0/8`)
+- allows TCP `connect` and UDP `udpassociate`
 
-只允许特定 IP 连接时，修改 `client pass` 规则：
+To limit which client IPs can connect, narrow the `client pass` rule:
 
 ```
 client pass {
@@ -104,15 +104,15 @@ client pass {
 }
 ```
 
-更多写法参考 `sockd.conf.example` 和官方文档：<https://www.inet.no/dante/doc/1.4.x/config/server.html>
+See `sockd.conf.example` and the official docs for more: <https://www.inet.no/dante/doc/1.4.x/config/server.html>
 
-## 安全提示
+## Security notes
 
-- 不要在 `socksmethod: none` 的情况下把 1080 端口暴露到公网，开放代理很快会被扫到并滥用。
-- SOCKS5 的用户名密码是明文传输的。请使用不和其他服务共用的强密码，并尽量用防火墙或 `client pass` 限制来源 IP。
-- 配置里的 `user.privileged: root` 是必需的，Dante 要读取 `/etc/shadow` 来校验密码；转发流量时使用非特权用户 `sockd`。
+- Don't expose port 1080 to the internet with `socksmethod: none`. Open proxies get found and abused quickly.
+- SOCKS5 username/password auth is sent in plain text. Use a strong password you don't use anywhere else, and restrict source IPs with a firewall or the `client pass` rule where you can.
+- `user.privileged: root` is required because Dante reads `/etc/shadow` to check passwords. Proxied traffic is handled as the unprivileged `sockd` user.
 
-## 日志
+## Logs
 
 ```bash
 docker compose logs -f
