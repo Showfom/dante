@@ -106,7 +106,7 @@ docker run -d --name dante --init -p 1080:1080 \
 
 ### Releasing images
 
-`.github/workflows/docker.yml` runs on every pushed tag. It builds linux/amd64 and linux/arm64 and pushes both Docker Hub and GHCR. A tag like `<version>` or `v<version>` produces the image tags `<version>` and `latest`; pre-release tags such as `<version>-rc1` don't move `latest`.
+`.github/workflows/docker.yml` runs on every pushed tag. It builds linux/amd64 and linux/arm64 on native GitHub runners, then pushes multi-arch images to both Docker Hub and GHCR. A tag like `<version>` or `v<version>` produces the image tags `<version>` and `latest`; pre-release tags such as `<version>-rc1` don't move `latest`.
 
 One-time setup: in the GitHub repo under Settings → Environments, create an environment named `Docker Hub` and add these secrets to it (the job runs in that environment):
 
