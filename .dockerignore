@@ -2,3 +2,4 @@
 README.md
 compose.yaml
 sockd.conf.example
+sockd-whitelist.conf

@@ -5,6 +5,7 @@ A Docker image for the [Dante](https://www.inet.no/dante/) SOCKS5 server, built 
 - Multi-stage build: compilers stay in the build stage, the runtime image only has `sockd` and `libpam0g`
 - The Dante version is a build argument, and the source tarball is checked against a SHA-256 checksum
 - Username/password auth by default; the login is created from environment variables when the container starts
+- An IP whitelist config is included for setups without a password
 
 ## Quick start
 
@@ -28,7 +29,8 @@ curl -x socks5h://proxy_user:change-me@YOUR_SERVER_IP:1080 https://ifconfig.me
 | `Dockerfile`           | Multi-stage build that compiles and packages `sockd`           |
 | `docker-entrypoint.sh` | Creates or updates the proxy user from env vars at startup     |
 | `compose.yaml`         | Docker Compose setup                                           |
-| `sockd.conf`           | The config in use, mounted read-only into the container        |
+| `sockd.conf`           | Default config (username/password), mounted read-only          |
+| `sockd-whitelist.conf` | Alternative config: IP whitelist, no authentication            |
 | `sockd.conf.example`   | Upstream sample config (from the Debian package), fully commented |
 
 ## Configuration
@@ -103,6 +105,30 @@ client pass {
     log: error
 }
 ```
+
+### IP whitelist instead of username/password
+
+`sockd-whitelist.conf` turns off authentication (`socksmethod: none`) and only accepts clients from listed IPs. Everyone else is dropped.
+
+1. Edit the `client pass` blocks in `sockd-whitelist.conf`, one block per IP or CIDR range:
+
+   ```
+   client pass {
+       from: 203.0.113.10/32 to: 0.0.0.0/0
+       log: error
+   }
+   ```
+
+2. Mount it instead of `sockd.conf` in `compose.yaml`. `PROXY_USER` / `PROXY_PASSWORD` can be removed:
+
+   ```yaml
+   volumes:
+     - ./sockd-whitelist.conf:/etc/sockd.conf:ro
+   ```
+
+3. Restart: `docker compose up -d`
+
+Before relying on the whitelist, make sure the container sees real client IPs. Connect once from a non-listed IP and check `docker compose logs`: the blocked line must show the client's public IP. If it shows a Docker gateway address such as `172.17.0.1` instead, which happens with Docker's userland proxy and some IPv6 setups, use `network_mode: host` and remove the `ports:` section. Never whitelist Docker's internal ranges (`172.16.0.0/12`); that would effectively allow everyone.
 
 See `sockd.conf.example` and the official docs for more: <https://www.inet.no/dante/doc/1.4.x/config/server.html>
 

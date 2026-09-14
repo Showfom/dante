@@ -50,7 +50,7 @@ RUN set -eux; \
     apt-get update; \
     apt-get install -y --no-install-recommends libpam0g; \
     rm -rf /var/lib/apt/lists/*; \
-    useradd -r -M -s /usr/sbin/nologin -u 8964 sockd
+    useradd -r -M -s /usr/sbin/nologin sockd
 
 COPY --from=build /out/usr/local/sbin/sockd /usr/local/sbin/sockd
 COPY sockd.conf /etc/sockd.conf
