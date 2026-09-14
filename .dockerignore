@@ -1,0 +1,6 @@
+.git
+.env
+.env.example
+README.md
+compose.yaml
+sockd.conf.example

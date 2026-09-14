@@ -1,0 +1,21 @@
+name: dante
+
+services:
+  dante:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        DANTE_VERSION: ${DANTE_VERSION:-1.4.4}
+        DANTE_SHA256: ${DANTE_SHA256:-1973c7732f1f9f0a4c0ccf2c1ce462c7c25060b25643ea90f9b98f53a813faec}
+    image: dante:${DANTE_VERSION:-1.4.4}
+    container_name: dante
+    init: true
+    ports:
+      - "1080:1080"
+    environment:
+      PROXY_USER: ${PROXY_USER:-}
+      PROXY_PASSWORD: ${PROXY_PASSWORD:-}
+    volumes:
+      - ./sockd.conf:/etc/sockd.conf:ro
+    restart: always
