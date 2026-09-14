@@ -1,6 +1,11 @@
 # Dante SOCKS5 Proxy (Docker)
 
-Docker Hub: [`showfom/dante`](https://hub.docker.com/r/showfom/dante) (tags `1.4.4`, `latest`, linux/amd64)
+Images for linux/amd64 and linux/arm64, tags `1.4.4` and `latest`:
+
+| Registry   | Image                                                              |
+| ---------- | ------------------------------------------------------------------ |
+| Docker Hub | [`showfom/dante`](https://hub.docker.com/r/showfom/dante)          |
+| GHCR       | [`ghcr.io/showfom/dante`](https://github.com/Showfom/dante/pkgs/container/dante) |
 
 A Docker image for the [Dante](https://www.inet.no/dante/) SOCKS5 server, built from source on `debian:trixie-slim`.
 
@@ -12,10 +17,16 @@ A Docker image for the [Dante](https://www.inet.no/dante/) SOCKS5 server, built 
 ## Quick start
 
 ```bash
-git clone git@github.com:Showfom/dante.git
+git clone git@github.com:showfom/dante.git
 cd dante
 # edit PROXY_USER and PROXY_PASSWORD in compose.yaml first
 docker compose up -d
+```
+
+To pull from GHCR instead of Docker Hub, change the image in `compose.yaml`:
+
+```yaml
+image: ghcr.io/showfom/dante:1.4.4
 ```
 
 Test it:
@@ -30,6 +41,7 @@ curl -x socks5h://proxy_user:change-me@YOUR_SERVER_IP:1080 https://ifconfig.me
 | ---------------------- | -------------------------------------------------------------- |
 | `Dockerfile`           | Multi-stage build that compiles and packages `sockd`           |
 | `docker-entrypoint.sh` | Creates or updates the proxy user from env vars at startup     |
+| `.github/workflows/docker.yml` | Builds and pushes multi-arch images when a tag is pushed |
 | `compose.yaml`         | Docker Compose setup using `showfom/dante:1.4.4`               |
 | `sockd.conf`           | Default config (username/password), mounted read-only          |
 | `sockd-whitelist.conf` | Alternative config: IP whitelist, no authentication            |
@@ -86,6 +98,26 @@ docker run -d --name dante --init -p 1080:1080 \
   showfom/dante:1.4.4
 ```
 
+### Releasing images
+
+`.github/workflows/docker.yml` runs on every pushed tag. It builds linux/amd64 and linux/arm64 and pushes both Docker Hub and GHCR. A tag `1.4.4` or `v1.4.4` produces the image tags `1.4.4` and `latest` (pre-release tags such as `1.4.5-rc1` don't move `latest`).
+
+One-time setup, in the GitHub repo under Settings → Secrets and variables → Actions:
+
+| Secret               | Value                                                  |
+| -------------------- | ------------------------------------------------------ |
+| `DOCKERHUB_USERNAME` | Docker Hub username                                    |
+| `DOCKERHUB_TOKEN`    | Docker Hub access token with Read & Write permission   |
+
+GHCR uses the built-in `GITHUB_TOKEN`, so it needs no secret. After the first push, the GHCR package is private by default; make it public under the package's settings if you want anonymous pulls.
+
+To release, bump the version in the `Dockerfile` if needed, then:
+
+```bash
+git tag 1.4.4
+git push origin 1.4.4
+```
+
 ### sockd.conf
 
 Compose mounts `sockd.conf` read-only at `/etc/sockd.conf`, so config changes only need a restart, not a rebuild:
@@ -105,7 +137,7 @@ To limit which client IPs can connect, narrow the `client pass` rule:
 
 ```
 client pass {
-    from: 203.0.113.0/24 to: 0.0.0.0/0
+    from: 192.0.2.0/24 to: 0.0.0.0/0
     log: error
 }
 ```
@@ -118,7 +150,7 @@ client pass {
 
    ```
    client pass {
-       from: 203.0.113.10/32 to: 0.0.0.0/0
+       from: 192.0.2.2/32 to: 0.0.0.0/0
        log: error
    }
    ```
